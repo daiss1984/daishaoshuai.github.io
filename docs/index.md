@@ -7,4 +7,5 @@ aside: false
 
 ## 最新文章
 
+- [Java Stream 实战指南](/posts/java-stream-guide)
 - [我的第一篇博客](/posts/first)

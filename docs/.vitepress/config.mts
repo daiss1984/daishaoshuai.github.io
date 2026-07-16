@@ -32,6 +32,7 @@ export default defineConfig({
       {
         text: '文章列表',
         items: [
+          { text: 'Java Stream 实战指南', link: '/posts/java-stream-guide' },
           { text: '我的第一篇博客', link: '/posts/first' }
         ]
       }
