@@ -36,7 +36,6 @@ export default defineConfig({
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: 'Home', link: '/' },
-      { text: '文章', link: '/posts/first' }
     ],
 
     sidebar: [
