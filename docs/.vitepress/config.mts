@@ -43,6 +43,7 @@ export default defineConfig({
       {
         text: '文章列表',
         items: [
+          { text: 'Redis 数据类型与过期策略', link: '/posts/redis-types-expiry' },
           { text: 'CSS Flex 常用属性与布局', link: '/posts/css-flex-guide' },
           { text: '内存泄漏 vs 内存溢出', link: '/posts/memory-leak-vs-oom' },
           { text: 'Promise vs Observable', link: '/posts/promise-vs-observable' },
