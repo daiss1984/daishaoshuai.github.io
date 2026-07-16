@@ -11,6 +11,7 @@ export default defineConfig({
       `
       :root {
         --vp-sidebar-width: 200px;
+        --vp-layout-max-width: 100%;
       }
       @media (min-width: 1440px) {
         .VPSidebar {
@@ -19,7 +20,14 @@ export default defineConfig({
         }
         .VPContent.has-sidebar {
           padding-left: calc(var(--vp-sidebar-width) + 32px) !important;
+          padding-right: 32px !important;
         }
+      }
+      .VPDoc .vp-doc,
+      .VPDoc.has-aside .content-container,
+      .main {
+        max-width: none !important;
+        width: 100% !important;
       }
       `
     ]
