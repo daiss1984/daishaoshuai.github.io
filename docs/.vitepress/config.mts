@@ -10,7 +10,7 @@ export default defineConfig({
       {},
       `
       :root {
-        --vp-sidebar-width: 200px;
+        --vp-sidebar-width: 300px;
         --vp-layout-max-width: 100%;
       }
       @media (min-width: 1440px) {
