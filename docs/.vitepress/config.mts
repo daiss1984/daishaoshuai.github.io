@@ -17,6 +17,9 @@ export default defineConfig({
           padding-left: 32px !important;
           width: var(--vp-sidebar-width) !important;
         }
+        .VPContent.has-sidebar {
+          padding-left: calc(var(--vp-sidebar-width) + 32px) !important;
+        }
       }
       `
     ]
