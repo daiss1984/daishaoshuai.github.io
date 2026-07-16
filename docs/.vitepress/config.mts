@@ -32,6 +32,7 @@ export default defineConfig({
       {
         text: '文章列表',
         items: [
+          { text: '浏览器如何实现异步', link: '/posts/js-event-loop' },
           { text: 'ES5 JS 对象继承', link: '/posts/js-es5-inheritance' },
           { text: 'Java Stream 实战指南', link: '/posts/java-stream-guide' },
         ]
