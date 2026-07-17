@@ -49,6 +49,7 @@ export default defineConfig({
           {
             text: 'Articles',
             items: [
+              { text: 'Python Data Types Guide', link: '/posts/python-data-types' },
               { text: 'JVM Optimization Guide', link: '/posts/jvm-optimization-guide' },
               { text: 'Redis Data Types & Expiry', link: '/posts/redis-types-expiry' },
               { text: 'CSS Flexbox: Properties & Layouts', link: '/posts/css-flex-guide' },
@@ -77,6 +78,7 @@ export default defineConfig({
           {
             text: '文章列表',
             items: [
+              { text: 'Python 数据类型全面指南', link: '/zh/posts/python-data-types' },
               { text: 'JVM 调优实战指南', link: '/zh/posts/jvm-optimization-guide' },
               { text: 'Redis 数据类型与过期策略', link: '/zh/posts/redis-types-expiry' },
               { text: 'CSS Flex 常用属性与布局', link: '/zh/posts/css-flex-guide' },
