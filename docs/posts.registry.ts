@@ -8,6 +8,12 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'jvm-optimization-guide',
+    title: 'JVM Optimization Practical Guide',
+    description:
+      'From heap sizing to GC tuning — master JVM optimization with practical parameters, GC selection, and real-world troubleshooting scenarios.',
+  },
+  {
     slug: 'redis-types-expiry',
     title: 'Redis Data Types & Expiry Strategies',
     description:

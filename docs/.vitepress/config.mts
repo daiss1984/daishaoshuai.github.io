@@ -49,6 +49,7 @@ export default defineConfig({
           {
             text: 'Articles',
             items: [
+              { text: 'JVM Optimization Guide', link: '/posts/jvm-optimization-guide' },
               { text: 'Redis Data Types & Expiry', link: '/posts/redis-types-expiry' },
               { text: 'CSS Flexbox: Properties & Layouts', link: '/posts/css-flex-guide' },
               { text: 'Memory Leak vs OOM', link: '/posts/memory-leak-vs-oom' },
@@ -76,6 +77,7 @@ export default defineConfig({
           {
             text: '文章列表',
             items: [
+              { text: 'JVM 调优实战指南', link: '/zh/posts/jvm-optimization-guide' },
               { text: 'Redis 数据类型与过期策略', link: '/zh/posts/redis-types-expiry' },
               { text: 'CSS Flex 常用属性与布局', link: '/zh/posts/css-flex-guide' },
               { text: '内存泄漏 vs 内存溢出', link: '/zh/posts/memory-leak-vs-oom' },

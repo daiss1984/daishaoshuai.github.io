@@ -7,6 +7,12 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'jvm-optimization-guide',
+    title: 'JVM 调优实战指南',
+    description:
+      '从堆内存配置到 GC 选型 —— 掌握 JVM 调优核心参数、垃圾收集器选择与生产环境实战排查场景。',
+  },
+  {
     slug: 'redis-types-expiry',
     title: 'Redis 数据类型与过期策略',
     description:
