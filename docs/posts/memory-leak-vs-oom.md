@@ -1,268 +1,272 @@
 ---
-title: 内存泄漏 vs 内存溢出 —— 面试常考题
+title: Memory Leak vs OOM — Common Interview Question
+date: 2026-07-05
+description: Memory leak is the disease, OOM is death. Learn 7 classic Java leak scenarios, investigation steps with jstat/jmap/MAT, and JVM tuning strategies.
 ---
 
-# 内存泄漏 vs 内存溢出 —— 面试常考题
+# Memory Leak vs OOM — Common Interview Question
 
-> **内存泄漏（Memory Leak）** 是程序逻辑缺陷，对象用完没释放，GC 无法回收。  
-> **内存溢出（OOM）** 是内存被耗尽的最终异常结果。  
-> 一因一果，但面试官经常问你"有什么区别？"
+> **Memory Leak** is a program logic defect — objects are not released after use and GC can't reclaim them.  
+> **OutOfMemoryError (OOM)** is the end result — memory is exhausted.  
+> One is the cause, the other the effect. Interviewers love asking, "What's the difference?"
 
-## 1. 一句话区分
+## 1. Quick Comparison
 
-| | 内存泄漏 (Memory Leak) | 内存溢出 (OutOfMemoryError) |
+| | Memory Leak | OutOfMemoryError |
 |------|------|------|
-| **本质** | 程序 Bug，对象"忘了删" | 资源耗尽，JVM 撑不住了 |
-| **现象** | 内存持续增长，GC 频率升高 | 直接抛 `OutOfMemoryError`，进程崩溃 |
-| **原因** | 代码缺陷（忘关资源、静态集合无限增长等） | 泄漏累积、堆太小、大对象、线程过多 |
-| **检测** | 监控工具 + Heap Dump 分析 | 日志中直接看到 |
-| **修复** | 改代码，释放引用 | 改代码 + 调大堆 + 优化 |
+| **Nature** | Code bug — objects "forgotten" | Resource exhaustion — JVM overwhelmed |
+| **Symptom** | Memory grows continuously, GC frequency increases | Throws `OutOfMemoryError`, process crashes |
+| **Cause** | Code defects (unclosed resources, unbounded static collections, etc.) | Accumulated leaks, small heap, large objects, excessive threads |
+| **Detection** | Monitoring tools + Heap Dump analysis | Directly visible in logs |
+| **Fix** | Fix code, release references | Fix code + increase heap + optimize |
 
-**一句话**：内存泄漏是"**病**"，OOM 是"**死**"。泄漏拖久了必 OOM。
+**In one line**: Memory leak is the **disease**, OOM is **death**. Leaks left untreated inevitably lead to OOM.
 
-## 2. Java 常见内存泄漏场景
+## 2. Common Java Memory Leak Scenarios
 
-### 2.1 静态集合无限增长
+### 2.1 Unbounded Static Collections
 
 ```java
-// ❌ 最常见的内存泄漏！
+// ❌ Most common memory leak!
 public class DataCache {
     private static final Map<String, Object> cache = new HashMap<>();
 
     public static void put(String key, Object data) {
-        cache.put(key, data);  // 只增不减，GC 永远无法回收
+        cache.put(key, data);  // only grows, GC can never reclaim
     }
 }
 
-// ✅ 修复：用 WeakHashMap 或加淘汰策略
+// ✅ Fix: use WeakHashMap or add eviction policy
 private static final Map<String, Object> cache = new WeakHashMap<>();
-// 或者用 Caffeine / Guava Cache 加过期时间
+// Or use Caffeine / Guava Cache with expiration
 ```
 
-### 2.2 忘记关闭资源
+### 2.2 Forgetting to Close Resources
 
 ```java
-// ❌ 连接没关
+// ❌ Connection not closed
 public void readFile() {
     try {
         FileInputStream fis = new FileInputStream("data.txt");
-        // 读数据...
-        // 忘了 fis.close()！
+        // read data...
+        // forgot fis.close()!
     } catch (Exception e) { }
 }
-// 文件描述符泄漏 → 最终 OOM: unable to create new native thread 或 Too many open files
+// File descriptor leak → eventually OOM: unable to create new native thread or Too many open files
 
 
-// ✅ try-with-resources（Java 7+）
+// ✅ try-with-resources (Java 7+)
 public void readFile() {
     try (FileInputStream fis = new FileInputStream("data.txt");
          BufferedReader br = new BufferedReader(new InputStreamReader(fis))) {
-        // 自动关闭，不用手动 finally
+        // auto-close, no manual finally needed
     } catch (Exception e) { }
 }
 ```
 
-### 2.3 内部类持有外部引用
+### 2.3 Inner Classes Holding Outer References
 
 ```java
-// ❌ 非静态内部类隐式持有外部类引用
+// ❌ Non-static inner class implicitly holds outer reference
 public class MainActivity {
-    private List<String> hugeData = new ArrayList<>(); // 10MB 数据
+    private List<String> hugeData = new ArrayList<>(); // 10MB data
 
-    // 非静态内部类 → 持有 MainActivity.this
+    // Non-static inner class → holds MainActivity.this
     class MyTask extends Thread {
         @Override
         public void run() {
-            // 这个线程跑 10 分钟，MainActivity 无法被 GC
+            // This thread runs for 10 minutes; MainActivity can't be GC'd
             Thread.sleep(10 * 60 * 1000);
         }
     }
 }
 
-// ✅ 改为静态内部类 + 弱引用
+// ✅ Use static inner class + weak reference
 static class MyTask extends Thread {
     @Override
-    public void run() { /* 不持有外部引用 */ }
+    public void run() { /* no outer reference held */ }
 }
 ```
 
-### 2.4 ThreadLocal 忘记 remove
+### 2.4 ThreadLocal without remove
 
-```javascript
-// ❌ 线程池 + ThreadLocal = 灾难
+```java
+// ❌ Thread pool + ThreadLocal = disaster
 public class UserContext {
     private static final ThreadLocal<User> currentUser = new ThreadLocal<>();
     public static void set(User u) { currentUser.set(u); }
-    // 忘了 remove()！线程复用时，上次的 User 对象永远存在
+    // forgot remove()! When thread is reused, the old User object persists forever
 }
 
-// ✅ 必须在 finally 中 remove
+// ✅ Must remove in finally
 try {
     UserContext.set(user);
-    // 业务逻辑
+    // business logic
 } finally {
-    UserContext.remove();  // 必须！
+    UserContext.remove();  // mandatory!
 }
 ```
 
-### 2.5 监听器 / 回调未注销
+### 2.5 Listener/Callback Not Unregistered
 
 ```java
-// ❌ 注册了监听器，但从不注销
+// ❌ Listener registered but never removed
 button.addActionListener(new ActionListener() {
     @Override
     public void actionPerformed(ActionEvent e) {
-        // 这个 listener 持有外部类的引用
+        // this listener holds reference to outer class
     }
 });
-// 即使外部对象不用了，因为被 listener 引用着，GC 无法回收
+// Even when the outer object is no longer needed, GC can't reclaim it
 
-// ✅ 用完后移除
+// ✅ Remove when done
 listener = e -> doSomething();
 button.addActionListener(listener);
-// ... 用完后
+// ... when done
 button.removeActionListener(listener);
 ```
 
-### 2.6 equals/hashCode 导致的内存泄漏
+### 2.6 equals/hashCode Causing Memory Leak
 
 ```java
-// ❌ 对象放进 HashSet 后修改了 equals 依赖的字段
+// ❌ Object put into HashSet, then equals-dependent field is modified
 Set<Person> set = new HashSet<>();
-Person p = new Person("张三", 25);
+Person p = new Person("Alice", 25);
 set.add(p);
 
-p.setName("李四");  // 改了参与 hashCode 的字段！
+p.setName("Bob");  // modified field used in hashCode!
 
-set.remove(p);  // 删除失败！hashCode 变了，找不到原来的桶位
-// p 永远留在 set 里，成为"僵尸对象"
+set.remove(p);  // deletion fails! hashCode changed, can't find original bucket
+// p remains in set forever as a "zombie object"
 ```
 
-### 2.7 字符串 intern 滥用（Java 6/7）
+### 2.7 String intern Abuse (Java 6/7)
 
 ```java
-// ❌ Java 6 中 String.intern() 放入 PermGen（永久代）
+// ❌ Java 6: String.intern() goes into PermGen
 for (int i = 0; i < 10000000; i++) {
-    ("str" + i).intern();  // PermGen OOM！
+    ("str" + i).intern();  // PermGen OOM!
 }
-// Java 7+ intern 放入堆，但大量 intern 仍可能撑爆堆
+// Java 7+ intern goes to heap, but heavy intern usage can still blow it up
 ```
 
-## 3. 内存泄漏 → OOM 的过程
+## 3. Memory Leak → OOM Progression
 
 ```
 ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐
-│ 少量泄漏  │ ──→  │ GC 频繁  │ ──→  │ FGC 不断 │ ──→  │  OOM！   │
-│ 内存慢涨  │      │ 吞吐下降  │      │ STW 变长  │      │ 进程崩溃  │
+│ Small    │ ──→  │ Frequent │ ──→  │ Constant │ ──→  │  OOM!    │
+│ leak     │      │ GC drops │      │ FGC,     │      │ Process  │
+│ memory   │      │ through- │      │ long STW │      │ crash    │
+│ grows    │      │ put      │      │          │      │          │
 └──────────┘      └──────────┘      └──────────┘      └──────────┘
 
-典型监控指标变化：
-  堆使用率:  ▂▃▄▅▆▇███ (锯齿状上升 — 垃圾回收后降不下来)
-  GC 时间:   1% → 5% → 20% → 50%+
-  响应时间:  100ms → 500ms → 3s → timeout
+Typical monitoring metric changes:
+  Heap usage:  ▂▃▄▅▆▇███ (sawtooth upward — GC can't bring it down)
+  GC time:     1% → 5% → 20% → 50%+
+  Response:    100ms → 500ms → 3s → timeout
 ```
 
-## 4. OOM 的四种经典类型
+## 4. Four Classic OOM Types
 
-| 异常信息 | 原因 | 修复方向 |
+| Exception | Cause | Fix |
 |------|------|------|
-| `Java heap space` | 堆内存不足 | 查泄漏 + 增大 `-Xmx` |
-| `GC overhead limit exceeded` | GC 占用 98% 时间但只回收 <2% 堆 | 堆快满了，查泄漏 |
-| `Metaspace` | 元空间（类定义）不足 | `-XX:MaxMetaspaceSize` |
-| `unable to create new native thread` | 线程数超限 | 减少线程 / 调大系统限制 |
+| `Java heap space` | Insufficient heap memory | Find leak + increase `-Xmx` |
+| `GC overhead limit exceeded` | GC uses 98% time but reclaims <2% heap | Heap nearly full, find leak |
+| `Metaspace` | Class metadata space insufficient | `-XX:MaxMetaspaceSize` |
+| `unable to create new native thread` | Thread limit exceeded | Reduce threads / increase OS limits |
 
 ```bash
-# 常见 JVM 参数
--Xms2g -Xmx4g                      # 堆 2-4G
--XX:MaxMetaspaceSize=256m           # 元空间上限
--XX:+HeapDumpOnOutOfMemoryError     # OOM 时自动 dump
+# Common JVM flags
+-Xms2g -Xmx4g                      # heap 2-4G
+-XX:MaxMetaspaceSize=256m           # metaspace limit
+-XX:+HeapDumpOnOutOfMemoryError     # auto dump on OOM
 -XX:HeapDumpPath=/tmp/heapdump.hprof
 ```
 
-## 5. 如何排查内存泄漏
+## 5. How to Investigate Memory Leaks
 
-### 5.1 监控指标
+### 5.1 Monitoring
 
 ```bash
-# 看堆使用趋势
+# Watch heap usage trends
 jstat -gc <pid> 1000 10
 
-# 结果关注：
-# OU (Old Used) — 老年代使用量持续上升 = 可能泄漏
-# FGC (Full GC 次数) — 频繁 Full GC = 危险信号
+# Key metrics:
+# OU (Old Used) — old gen usage continuously rising = possible leak
+# FGC (Full GC count) — frequent Full GC = danger signal
 ```
 
-### 5.2 获取 Heap Dump
+### 5.2 Capture Heap Dump
 
 ```bash
-# 方式1：jmap
+# Method 1: jmap
 jmap -dump:live,format=b,file=heap.hprof <pid>
 
-# 方式2：JVM 参数自动 dump（OOM 时）
+# Method 2: JVM auto-dump on OOM
 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/
 
-# 方式3：jcmd
+# Method 3: jcmd
 jcmd <pid> GC.heap_dump /tmp/heap.hprof
 ```
 
-### 5.3 分析思路
+### 5.3 Analysis Approach
 
-用 MAT (Memory Analyzer Tool) 或 JProfiler 打开 dump 文件：
+Use MAT (Memory Analyzer Tool) or JProfiler to open the dump:
 
-1. **看 Dominator Tree** → 哪个对象占了最多内存？
-2. **看 Leak Suspects** → MAT 自动分析可疑泄漏点
-3. **看 GC Roots 路径** → 为什么这个对象不能被回收？
-4. **对比两份 dump** → 增长最快的对象是哪个？
+1. **Dominator Tree** → which object consumes the most memory?
+2. **Leak Suspects** → MAT auto-analysis of suspicious leak points
+3. **GC Roots Path** → why can't this object be reclaimed?
+4. **Compare two dumps** → which object grew the fastest?
 
 ```
-经典排查步骤：
-  jstat 观察 → 确认泄漏 → jmap dump → MAT 分析
+Classic investigation steps:
+  jstat observe → confirm leak → jmap dump → MAT analysis
                                     ↓
-                    Dominator Tree → 最大对象
+                    Dominator Tree → largest object
                                     ↓
-                    GC Roots 路径 → 谁在引用它？
+                    GC Roots path → who's referencing it?
                                     ↓
-                    定位代码 → 修复
+                    Locate code → fix
 ```
 
-## 6. 内存泄漏的常见源码特征
+## 6. Common Leak-Prone Code Patterns
 
 ```java
-// 特征1：容器只 put 不 remove
-map.put(key, value);  // 没有对应的 remove
+// Pattern 1: container with put but no remove
+map.put(key, value);  // no corresponding remove
 
-// 特征2：addListener 没有 removeListener
+// Pattern 2: addListener without removeListener
 eventSource.addListener(listener);
 
-// 特征3：new Thread / new Runnable 内部类
-new Thread(() -> { /* 持有外部 this */ }).start();
+// Pattern 3: new Thread / new Runnable inner class
+new Thread(() -> { /* holds outer this */ }).start();
 
-// 特征4：ThreadLocal.set 没有 remove
+// Pattern 4: ThreadLocal.set without remove
 
-// 特征5：单例持有短生命周期对象
+// Pattern 5: singleton holding short-lived references
 class Singleton {
-    private Context context;  // ❌ Activity/Fragment/Request 的引用！
+    private Context context;  // ❌ Activity/Fragment/Request reference!
 }
 ```
 
-## 7. 最佳实践
+## 7. Best Practices
 
-| 原则 | 做法 |
-|------|------|
-| **资源必关** | 一律 `try-with-resources` |
-| **容器有界** | 静态集合用 WeakHashMap 或加 LRU 淘汰 |
-| **ThreadLocal 必清** | `finally { threadLocal.remove(); }` |
-| **监听必注销** | 注册和注销成对出现 |
-| **内部类用静态** | 避免隐式持有外部引用 |
-| **OOM 自动 dump** | 加上 `HeapDumpOnOutOfMemoryError` |
-| **上线前压测** | 跑一段时间看内存是否稳定在某个值 |
+| Principle | Practice |
+|-----------|----------|
+| **Always close resources** | Use `try-with-resources` everywhere |
+| **Bound your collections** | Use WeakHashMap for static caches or add LRU eviction |
+| **Always clear ThreadLocal** | `finally { threadLocal.remove(); }` |
+| **Always unregister listeners** | Register and unregister in pairs |
+| **Use static inner classes** | Avoid implicit outer references |
+| **Auto-dump on OOM** | Add `HeapDumpOnOutOfMemoryError` |
+| **Load test before launch** | Run for a while, check if memory stabilizes |
 
-## 8. 💡 面试回答模板
+## 8. 💡 Interview Answer Template
 
-> **"内存泄漏和内存溢出有什么区别？"**
+> **"What's the difference between memory leak and OOM?"**
 
-> 内存泄漏是程序 Bug——分配的对象用完后没有被释放，GC 无法回收，导致堆内存持续增长。内存溢出是最终结果——当可用内存耗尽时 JVM 抛出 OutOfMemoryError。  
+> A memory leak is a program bug — allocated objects are not released after use and GC can't reclaim them, causing heap memory to grow continuously. OOM is the end result — when available memory is exhausted, the JVM throws OutOfMemoryError.
 >
-> 两者的关系是**因果关系**：内存泄漏如果持续恶化，最终必然导致 OOM。但 OOM 不一定来自泄漏——也可能是堆配置太小、一次性加载大文件、线程数超限等。  
+> Their relationship is **cause and effect**: if a memory leak persists, it inevitably leads to OOM. But OOM doesn't always come from a leak — it could also be due to a heap that's too small, loading a huge file at once, or too many threads.
 >
-> 排查上，泄漏需要用 jstat 观察内存趋势，用 jmap dump 堆快照，用 MAT 分析 GC Roots 找到是谁持有了不该持有的引用。OOM 则可以直接从日志和异常类型（heap space / metaspace / native thread）快速定位方向。
+> For investigation: leaks require observing memory trends with jstat, capturing heap dumps with jmap, and analyzing GC Roots with MAT to find who's holding unwanted references. OOM can be quickly diagnosed from logs and the exception type (heap space / metaspace / native thread).

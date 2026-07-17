@@ -1,256 +1,258 @@
 ---
-title: Redis 数据类型与过期策略
+title: Redis Data Types & Expiry Strategies
+date: 2026-07-15
+description: Redis is more than a key-value cache. Covers 5 basic types + 4 special types (Bitmap, HyperLogLog, Geo, Stream), along with lazy deletion, periodic deletion, and 8 memory eviction policies.
 ---
 
-# Redis 数据类型与过期策略
+# Redis Data Types & Expiry Strategies
 
-Redis 不只是 key-value 缓存。它的数据类型决定了你能用它做什么，过期策略决定了它能撑多久。
+Redis is more than a key-value cache. Its data types determine what you can build, and its expiry strategies determine how long data lives.
 
-## 1. 五种基本数据类型
+## 1. Five Basic Data Types
 
-### 1.1 String（字符串）
+### 1.1 String
 
-最基础的类型，value 最大 512MB。
+The most basic type, supporting values up to 512MB.
 
 ```bash
-SET user:1001:name "张三"
-GET user:1001:name        # "张三"
+SET user:1001:name "Alice"
+GET user:1001:name        # "Alice"
 
 SET counter 1
-INCR counter               # 2（原子自增）
+INCR counter               # 2 (atomic increment)
 INCRBY counter 10          # 12
 
-SETEX session:token 3600 "abc123"  # 带过期时间
+SETEX session:token 3600 "abc123"  # with expiration
 ```
 
-> **场景**：缓存 JSON、计数器、分布式锁（`SETNX`）、Session。
+> **Use cases**: JSON caching, counters, distributed locks (`SETNX`), sessions.
 
-### 1.2 Hash（哈希）
+### 1.2 Hash
 
-存储对象，key → field → value。
+Stores objects as key → field → value.
 
 ```bash
-HSET user:1001 name "张三" age 28 email "zhang@example.com"
-HGET user:1001 name        # "张三"
-HGETALL user:1001          # 全部字段
+HSET user:1001 name "Alice" age 28 email "alice@example.com"
+HGET user:1001 name        # "Alice"
+HGETALL user:1001          # all fields
 HINCRBY user:1001 age 1    # 29
 ```
 
-> **场景**：用户信息、商品详情、购物车。比 String 存 JSON 更省内存，且支持部分更新。
+> **Use cases**: User profiles, product details, shopping carts. More memory-efficient than storing JSON as String, with support for partial updates.
 
-### 1.3 List（列表）
+### 1.3 List
 
-双向链表，有序可重复。适合队列和栈。
+Doubly-linked list, ordered and allows duplicates. Ideal for queues and stacks.
 
 ```bash
-LPUSH queue "task1" "task2"   # 左推入 ["task2","task1"]
-RPUSH queue "task3"           # 右推入 ["task2","task1","task3"]
-LPOP queue                     # "task2"（左弹出）
-BRPOP queue 5                  # 阻塞右弹出，等 5 秒
+LPUSH queue "task1" "task2"   # left push → ["task2","task1"]
+RPUSH queue "task3"           # right push → ["task2","task1","task3"]
+LPOP queue                     # "task2" (left pop)
+BRPOP queue 5                  # blocking right pop, wait 5s
 
-LRANGE queue 0 -1              # 查看全部
+LRANGE queue 0 -1              # view all
 ```
 
-| 命令 | 方向 | 用途 |
-|------|------|------|
-| `LPUSH` + `RPOP` | 左进右出 | 消息队列 |
-| `RPUSH` + `LPOP` | 右进左出 | 消息队列 |
-| `LPUSH` + `LPOP` | 左进左出 | 栈 |
-| `BRPOP` | 阻塞弹出 | 阻塞队列 |
+| Command | Direction | Use |
+|---------|-----------|-----|
+| `LPUSH` + `RPOP` | Left in, right out | Message queue |
+| `RPUSH` + `LPOP` | Right in, left out | Message queue |
+| `LPUSH` + `LPOP` | Left in, left out | Stack |
+| `BRPOP` | Blocking pop | Blocking queue |
 
-### 1.4 Set（集合）
+### 1.4 Set
 
-无序、不重复。
+Unordered, no duplicates.
 
 ```bash
 SADD tags:article:1 "Java" "Redis" "Spring"
 SADD tags:article:2 "Java" "MySQL"
-SINTER tags:article:1 tags:article:2   # {"Java"}  交集
-SUNION tags:article:1 tags:article:2   # 并集
-SDIFF tags:article:1 tags:article:2    # {"Redis","Spring"} 差集
+SINTER tags:article:1 tags:article:2   # {"Java"}  intersection
+SUNION tags:article:1 tags:article:2   # union
+SDIFF tags:article:1 tags:article:2    # {"Redis","Spring"} difference
 
-SISMEMBER tags:article:1 "Java"        # 1（存在）
+SISMEMBER tags:article:1 "Java"        # 1 (exists)
 ```
 
-> **场景**：标签、共同好友、点赞用户（去重）、抽奖（`SRANDMEMBER`）。
+> **Use cases**: Tags, mutual friends, like deduplication, raffles (`SRANDMEMBER`).
 
-### 1.5 Sorted Set（有序集合）
+### 1.5 Sorted Set
 
-每个成员带一个 score，按 score 排序。
+Each member has a score, sorted by score.
 
 ```bash
 ZADD leaderboard 100 "Alice" 85 "Bob" 92 "Charlie"
-ZRANGE leaderboard 0 -1           # 按分数升序
-ZREVRANGE leaderboard 0 -1        # 按分数降序（排行榜）
-ZRANK leaderboard "Alice"         # 2（Alice 排名第 3，从 0 开始）
+ZRANGE leaderboard 0 -1           # ascending by score
+ZREVRANGE leaderboard 0 -1        # descending (leaderboard)
+ZRANK leaderboard "Alice"         # 2 (Alice ranks 3rd, 0-indexed)
 ZSCORE leaderboard "Alice"        # "100"
-ZINCRBY leaderboard 5 "Bob"       # 90（加分）
+ZINCRBY leaderboard 5 "Bob"       # 90 (add score)
 ```
 
-> **场景**：排行榜、延迟队列（score = 执行时间戳）、按时间排序的消息流。
+> **Use cases**: Leaderboards, delayed queues (score = execution timestamp), time-sorted message feeds.
 
-## 2. 三种特殊数据类型
+## 2. Three Special Data Types
 
-### 2.1 Bitmap（位图）
+### 2.1 Bitmap
 
-不是独立类型，是 String 的位操作。适合统计类场景。
+Not a standalone type — it's bit-level operations on String. Great for statistics.
 
 ```bash
-SETBIT user:login:20260717 1001 1   # 用户 1001 今天登录了
+SETBIT user:login:20260717 1001 1   # user 1001 logged in today
 SETBIT user:login:20260717 1002 1
-BITCOUNT user:login:20260717         # 2（今天登录人数）
+BITCOUNT user:login:20260717         # 2 (login count today)
 ```
 
-> **场景**：签到打卡、在线状态、布隆过滤器。
+> **Use cases**: Check-ins, online status, Bloom filters.
 
 ### 2.2 HyperLogLog
 
-基数统计，极度省内存（12KB 统计 2^64 个不同元素），但有约 0.81% 误差。
+Cardinality counting, extremely memory-efficient (12KB for 2^64 distinct elements), ~0.81% error.
 
 ```bash
 PFADD uv:page1 user1 user2 user3
 PFADD uv:page1 user2 user4
-PFCOUNT uv:page1        # 4（UV 统计）
+PFCOUNT uv:page1        # 4 (UV count)
 ```
 
-> **场景**：UV 统计、去重计数。不需要精确值，只要近似值。
+> **Use cases**: UV statistics, deduplication counting where exact values aren't required.
 
-### 2.3 Geospatial（地理坐标）
+### 2.3 Geospatial
 
 ```bash
-GEOADD cities 116.397 39.908 "北京" 121.473 31.230 "上海"
-GEODIST cities "北京" "上海" km     # "1068.xxxx"（距离）
-GEORADIUS cities 116.4 39.9 200 km  # 北京 200km 内的城市
+GEOADD cities 116.397 39.908 "Beijing" 121.473 31.230 "Shanghai"
+GEODIST cities "Beijing" "Shanghai" km     # "1068.xxxx" (distance)
+GEORADIUS cities 116.4 39.9 200 km         # cities within 200km of Beijing
 ```
 
-> **场景**：附近的人、周边商铺。
+> **Use cases**: Nearby people, nearby shops.
 
-### 2.4 Stream（消息流，Redis 5.0+）
+### 2.4 Stream (Redis 5.0+)
 
 ```bash
 XADD mystream * message "hello"
 XADD mystream * message "world"
 XLEN mystream              # 2
-XRANGE mystream - +        # 查看全部
-XREAD COUNT 2 STREAMS mystream 0  # 读取
+XRANGE mystream - +        # view all
+XREAD COUNT 2 STREAMS mystream 0  # read
 ```
 
-> **场景**：消息队列、事件溯源。相比 List，Stream 支持消费者组、消息确认。
+> **Use cases**: Message queues, event sourcing. Unlike List, Stream supports consumer groups and message acknowledgment.
 
-## 3. 数据类型选择速查
+## 3. Data Type Selection Cheat Sheet
 
-| 场景 | 选型 |
-|------|------|
-| 缓存 JSON 对象 | String（简单）或 Hash（字段级操作） |
-| 计数器 / 限流 | String + `INCR` + 过期 |
-| 消息队列（简单） | List + `BRPOP` |
-| 消息队列（可靠） | Stream + 消费者组 |
-| 排行榜 | Sorted Set |
-| 标签 / 去重 | Set |
-| 共同好友 / 交集 | Set + `SINTER` |
-| UV 统计 | HyperLogLog |
-| 签到 / 布隆 | Bitmap |
-| 附近的人 | Geo |
-| 分布式锁 | String + `SET NX EX` |
+| Scenario | Type |
+|----------|------|
+| Cache JSON | String (simple) or Hash (field-level ops) |
+| Counter / rate limit | String + `INCR` + expiry |
+| Message queue (simple) | List + `BRPOP` |
+| Message queue (reliable) | Stream + consumer group |
+| Leaderboard | Sorted Set |
+| Tags / dedup | Set |
+| Mutual friends / intersection | Set + `SINTER` |
+| UV stats | HyperLogLog |
+| Check-ins / Bloom | Bitmap |
+| Nearby | Geo |
+| Distributed lock | String + `SET NX EX` |
 
-## 4. Redis 过期策略
+## 4. Redis Expiry Strategies
 
-### 4.1 如何设置过期
+### 4.1 Setting Expiry
 
 ```bash
-EXPIRE key 60              # 60 秒后过期
-SETEX key 60 "value"       # 创建时直接设过期
-PEXPIRE key 60000          # 60000 毫秒后过期
-EXPIREAT key 1740000000    # 指定 Unix 时间戳过期
-TTL key                    # 查看剩余时间（-1 永不过期，-2 已过期）
-PERSIST key                # 移除过期时间
+EXPIRE key 60              # expire in 60 seconds
+SETEX key 60 "value"       # set with expiry
+PEXPIRE key 60000          # expire in 60000ms
+EXPIREAT key 1740000000    # expire at Unix timestamp
+TTL key                    # check remaining time (-1 = no expiry, -2 = expired)
+PERSIST key                # remove expiry
 ```
 
-### 4.2 三种过期删除策略
+### 4.2 Three Expiry Deletion Strategies
 
-| 策略 | 机制 | 优缺点 |
-|------|------|------|
-| **惰性删除** | 访问 key 时才检查是否过期，过期则删 | 省 CPU，但过期 key 不访问就永远占内存 |
-| **定期删除** | 每隔 100ms 随机抽取一批 key 检查过期 | 折中，CPU 和内存的平衡 |
-| **定时删除** | 每个 key 建一个定时器，到点就删 | 最及时，但大量 key 时 CPU 开销巨大 |
+| Strategy | Mechanism | Pros/Cons |
+|----------|-----------|-----------|
+| **Lazy deletion** | Check on access, delete if expired | CPU-friendly but expired keys consume memory until accessed |
+| **Periodic deletion** | Every 100ms, randomly sample keys to check | Balanced approach for CPU and memory |
+| **Timed deletion** | Timer per key, delete on expiry | Most timely, but high CPU cost with many keys |
 
-### 4.3 Redis 的实际做法：惰性 + 定期
+### 4.3 Redis Actual Approach: Lazy + Periodic
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Redis 过期处理                               │
+│ Redis Expiry Handling                        │
 │                                              │
-│ 1. 访问 key → 惰性检查 → 过期？删             │
-│ 2. 每 100ms → 随机取 20 个 key                │
-│    ├─ 过期？删                                │
-│    ├─ 过期比例 > 25% → 重复此轮               │
-│    └─ 过期比例 ≤ 25% → 等下一个 100ms          │
+│ 1. Access key → lazy check → expired? delete │
+│ 2. Every 100ms → randomly pick 20 keys       │
+│    ├─ expired? delete                        │
+│    ├─ expiry ratio > 25% → repeat this round │
+│    └─ expiry ratio ≤ 25% → wait next 100ms   │
 └─────────────────────────────────────────────┘
 ```
 
-**关键点**：定期删除不是全量扫描，而是**随机抽样**。所以可能出现大量过期 key 没被及时清理。
+**Key point**: Periodic deletion uses random sampling, not full scan. Many expired keys may not be cleaned up immediately.
 
-### 4.4 内存淘汰策略（内存满时怎么办？）
+### 4.4 Memory Eviction Policies (When memory is full)
 
-当 Redis 内存超过 `maxmemory`，有 8 种淘汰策略：
+When Redis exceeds `maxmemory`, 8 eviction policies are available:
 
-| 策略 | 行为 |
-|------|------|
-| `noeviction`（默认） | 不淘汰，写请求报错 |
-| `allkeys-lru` | 所有 key 中，淘汰最近最少用的 |
-| `allkeys-lfu` | 所有 key 中，淘汰最不常用的 |
-| `allkeys-random` | 所有 key 中，随机淘汰 |
-| `volatile-lru` | 设了过期的 key 中，淘汰最近最少用的 |
-| `volatile-lfu` | 设了过期的 key 中，淘汰最不常用的 |
-| `volatile-random` | 设了过期的 key 中，随机淘汰 |
-| `volatile-ttl` | 设了过期的 key 中，淘汰 TTL 最短的 |
+| Policy | Behavior |
+|--------|----------|
+| `noeviction` (default) | No eviction, write errors |
+| `allkeys-lru` | Evict least recently used across all keys |
+| `allkeys-lfu` | Evict least frequently used across all keys |
+| `allkeys-random` | Random eviction across all keys |
+| `volatile-lru` | Evict LRU among keys with TTL |
+| `volatile-lfu` | Evict LFU among keys with TTL |
+| `volatile-random` | Random eviction among keys with TTL |
+| `volatile-ttl` | Evict keys with shortest TTL |
 
 ```bash
-# 配置
+# Configuration
 maxmemory 2gb
 maxmemory-policy allkeys-lru
 ```
 
-**选型建议**：
+**Selection guide**:
 
-| 场景 | 推荐策略 |
-|------|------|
-| 纯缓存（数据可丢） | `allkeys-lru` 或 `allkeys-lfu` |
-| 缓存 + 持久化混合 | `volatile-lru`（只淘汰有 TTL 的） |
-| 绝对不能丢数据 | `noeviction` |
+| Scenario | Recommended |
+|----------|-------------|
+| Pure cache (data can be lost) | `allkeys-lru` or `allkeys-lfu` |
+| Cache + persistence mixed | `volatile-lru` (only evict TTL keys) |
+| Data must never be lost | `noeviction` |
 
 ### 4.5 LRU vs LFU
 
 ```
-LRU（Least Recently Used）：
-  "你多久没来了？"
-  最近没访问的 → 淘汰
-  适合：热点数据相对稳定的场景
+LRU (Least Recently Used):
+  "How long since you last visited?"
+  Evicts least recently accessed keys
+  Best for: relatively stable hot data
 
-LFU（Least Frequently Used）：
-  "你来过几次？"
-  访问频率最低的 → 淘汰
-  适合：新数据容易被淘汰，老热点数据保留
+LFU (Least Frequently Used):
+  "How many times have you visited?"
+  Evicts least frequently accessed keys
+  Best for: new data easily evicted, old hot data retained
 
-Redis 的 LRU/LFU 是近似算法（随机抽样 N 个 key，淘汰其中最差的）
+Redis LRU/LFU are approximate (random sample N keys, evict the worst)
 ```
 
-## 5. 💡 常见面试追问
+## 5. 💡 Common Interview Follow-Ups
 
-**Q：Redis 的过期 key 删除是即时的吗？**
+**Q: Is Redis expiry deletion immediate?**
 
-> 不是。Redis 使用惰性删除（访问时检查）+ 定期删除（定时随机抽样）。这意味着过期 key 可能不会立即被删除，内存释放可能有延迟。
+> No. Redis uses lazy deletion (check on access) + periodic deletion (timed random sampling). Expired keys may not be deleted immediately — memory release may have a delay.
 
-**Q：如果有大量 key 同时过期会怎样？**
+**Q: What happens if many keys expire at the same time?**
 
-> 如果这些 key 在同一轮定期删除中被处理，可能导致短暂的 CPU 尖峰。建议给过期时间加随机偏移：`EXPIRE key 3600 + rand(0, 300)`。
+> A CPU spike may occur if all are processed in one periodic deletion round. Recommendation: add random offset to expiry times: `EXPIRE key 3600 + rand(0, 300)`.
 
-**Q：如何查看 Redis 的内存和过期情况？**
+**Q: How to check Redis memory and expiry status?**
 
 ```bash
-INFO memory        # 内存使用情况
-INFO stats         # 过期 key 统计（expired_keys）
-INFO keyspace      # 每个 DB 的 key 数量 + 带 TTL 的数量
+INFO memory        # memory usage
+INFO stats         # expired key stats (expired_keys)
+INFO keyspace      # key count per DB + TTL count
 ```
 
-**一句话总结**：Redis 的过期 = 惰性 + 定期 + 内存淘汰三重保障。数据类型选对，事半功倍；过期策略配好，内存不爆。
+**In a nutshell**: Redis expiry = lazy + periodic + memory eviction — triple safety net. Pick the right data type, configure expiry well, and memory won't overflow.

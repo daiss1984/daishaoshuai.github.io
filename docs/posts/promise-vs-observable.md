@@ -1,74 +1,76 @@
 ---
-title: Promise vs Observable —— 面试常考题深度对比
+title: Promise vs Observable — Deep Dive Comparison
+date: 2026-06-28
+description: Eager vs Lazy, single value vs stream, uncancelable vs cancelable — understand the fundamental differences between Promise and Observable for your next interview.
 ---
 
-# Promise vs Observable —— 面试常考题深度对比
+# Promise vs Observable — Deep Dive Comparison
 
-Promise 和 Observable 都是处理异步的利器，但设计哲学截然不同。面试官问这个问题，不是在考 API 记忆力，而是想看你是否理解**"推"（Push）与"拉"（Pull）**、**"单值"与"流"**的本质区别。
+Both Promise and Observable handle asynchrony, but their design philosophies are fundamentally different. When interviewers ask this, they're not testing API memory — they're checking whether you understand **Push vs Pull** and **single value vs stream**.
 
-## 1. 一句话对比
+## 1. Quick Comparison
 
 | | Promise | Observable |
 |------|------|------|
-| **执行时机** | **Eager（立即）**——创建就执行 | **Lazy（惰性）**——subscribe 才执行 |
-| **值的数量** | **单值**——resolve 一次就结束 | **多值**——可以持续推送多个值 |
-| **可取消** | ❌ 无法取消 | ✅ `unsubscribe()` 取消订阅 |
-| **操作符** | `.then` `.catch` `.finally` | 丰富的 operators（`map` `filter` `debounce` `switchMap`...） |
-| **多播** | ❌ 每个 `.then` 共享同一个结果 | 默认单播，可通过 `share()` 多播 |
-| **规范** | ES6 原生 | RxJS 库（TC39 提案中） |
+| **Execution Timing** | **Eager** — runs immediately on creation | **Lazy** — runs only on subscribe |
+| **Value Count** | **Single** — resolve once and done | **Multiple** — can push many values |
+| **Cancellable** | ❌ Cannot cancel | ✅ `unsubscribe()` |
+| **Operators** | `.then` `.catch` `.finally` | Rich operators (`map` `filter` `debounce` `switchMap`...) |
+| **Multicast** | ❌ Each `.then` shares the same result | Default unicast, multicast via `share()` |
+| **Spec** | ES6 native | RxJS library (TC39 proposal) |
 
-## 2. Eager vs Lazy —— 最核心的差异
+## 2. Eager vs Lazy — The Core Difference
 
-### Promise：创建即执行
+### Promise: Runs on Creation
 
 ```javascript
-// Promise 一旦创建，里面的代码立刻执行！
+// Promise executes immediately upon creation!
 const promise = new Promise((resolve) => {
-    console.log('Promise 开始执行');
+    console.log('Promise started');
     setTimeout(() => {
         resolve('done');
     }, 1000);
 });
 
-// 即使没有 .then()，上面的代码也已经跑了
-// 1 秒后 resolve，不管有没有人监听
+// Even without .then(), the code above has already run
+// Resolves after 1 second, regardless of whether anyone listens
 ```
 
-### Observable：subscribe 才执行
+### Observable: Runs on Subscribe
 
 ```javascript
 import { Observable } from 'rxjs';
 
 const observable$ = new Observable((subscriber) => {
-    console.log('Observable 开始执行');
+    console.log('Observable started');
     setTimeout(() => {
         subscriber.next('done');
     }, 1000);
 });
 
-// 什么都不发生！必须 subscribe
+// Nothing happens! Must subscribe
 observable$.subscribe((value) => console.log(value));
-// 现在才输出 'Observable 开始执行'，1秒后输出 'done'
+// Now outputs 'Observable started', then 'done' after 1s
 
-// 每次 subscribe 都是独立执行
-observable$.subscribe((value) => console.log('第二次:', value));
+// Each subscribe is an independent execution
+observable$.subscribe((value) => console.log('Second:', value));
 ```
 
-> **面试金句**：Promise 是热执行（hot），创建就跑；Observable 默认是冷执行（cold），没人订阅就不动。
+> **Interview gold**: Promise is hot execution — runs on creation; Observable defaults to cold — nothing happens until subscribed.
 
-## 3. 单值 vs 多值流
+## 3. Single Value vs Multi-Value Stream
 
 ```javascript
-// Promise —— 一次 resolve，game over
+// Promise — resolve once, game over
 const promise = new Promise((resolve) => {
     resolve(1);
-    resolve(2); // 无效！Promise 状态一旦 settled 就不可变
-    resolve(3); // 无效！
+    resolve(2); // ineffective! Promise state is immutable once settled
+    resolve(3); // ineffective!
 });
-promise.then(console.log); // 只输出 1
+promise.then(console.log); // only outputs 1
 
 
-// Observable —— 持续推送
+// Observable — continuous push
 const stream$ = new Observable((subscriber) => {
     subscriber.next(1);
     subscriber.next(2);
@@ -76,41 +78,41 @@ const stream$ = new Observable((subscriber) => {
     subscriber.complete();
 });
 stream$.subscribe(console.log);
-// 输出: 1, 2, 3
+// Output: 1, 2, 3
 ```
 
-这种差异决定了使用场景：
+This difference determines use cases:
 
-| 场景 | 用哪个 | 原因 |
-|------|------|------|
-| HTTP 请求（一次响应） | Promise | 一个请求一个响应，天然匹配 |
-| WebSocket 消息 | Observable | 持续推送，多值流 |
-| 用户输入（搜索框） | Observable | 每次输入都是新事件 |
-| 定时器 / 轮询 | Observable | 重复产生值 |
-| 文件读取 | Promise | 一次读取一次结果 |
+| Scenario | Use | Why |
+|----------|-----|-----|
+| HTTP request (single response) | Promise | One request, one response, natural fit |
+| WebSocket messages | Observable | Continuous push, multi-value stream |
+| User input (search box) | Observable | Each keystroke is a new event |
+| Timer / polling | Observable | Repeated value generation |
+| File read | Promise | One read, one result |
 
-## 4. 取消 —— 关键的工程差异
+## 4. Cancellation — Critical Engineering Difference
 
 ```javascript
-// Promise —— 无法取消
+// Promise — cannot cancel
 const promise = fetch('/api/data');
-// 即使组件卸载了，请求还在进行，回调还会执行
-// React 经典 bug：组件 unmount 后 setState 导致内存泄漏
+// Even if component unmounts, the request continues, callback still fires
+// Classic React bug: setState after unmount causes memory leak
 
 
-// Observable —— 取消就是 unsubscribe
+// Observable — cancel via unsubscribe
 const subscription = observable$.subscribe({
     next: (data) => this.setState({ data }),
     error: (err) => console.error(err),
 });
 
-// 组件卸载时
+// On component unmount
 subscription.unsubscribe();
-// 干净利落！比如 fetch 会被 AbortController 取消
+// Clean! e.g., fetch gets cancelled via AbortController
 ```
 
 ```javascript
-// RxJS 的 switchMap 更是自动取消前一个请求
+// RxJS switchMap auto-cancels previous requests
 import { fromEvent } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
@@ -119,170 +121,170 @@ fromEvent(input, 'input').pipe(
     switchMap((e) => fetch(`/api/search?q=${e.target.value}`))
 ).subscribe();
 
-// 用户快速输入 "abc"
-// 'a' → 发起请求1
-// 'ab' → 取消请求1，发起请求2
-// 'abc' → 取消请求2，发起请求3
-// 只收到最后一个结果！完美解决竞态问题
+// User quickly types "abc"
+// 'a' → starts request 1
+// 'ab' → cancels request 1, starts request 2
+// 'abc' → cancels request 2, starts request 3
+// Only the last result arrives! Perfect race-condition handling
 ```
 
-如果用 Promise 实现同样效果，需要手动维护取消标志和 AbortController，代码量至少翻倍。
+Achieving the same with Promise requires manual cancel flags and AbortController — at least twice the code.
 
-## 5. 操作符 —— Observable 的杀手锏
+## 5. Operators — Observable's Killer Feature
 
-Promise 只有三板斧：`.then()` `.catch()` `.finally()`。Observable 有 100+ operators：
+Promise has only three tools: `.then()` `.catch()` `.finally()`. Observable has 100+ operators:
 
 ```javascript
 import { fromEvent } from 'rxjs';
 import { map, filter, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 
-// 搜索框典型场景：用 Promise 写
+// Search box typical scenario with Promise:
 input.addEventListener('input', (e) => {
     const value = e.target.value;
-    // 手动写防抖...
-    // 手动写去重...
-    // 手动写取消上一次请求...
-    // 十几行代码
+    // manually implement debounce...
+    // manually implement dedup...
+    // manually cancel previous request...
+    // dozens of lines
 });
 
-// 用 Observable：优雅的函数式管道
+// With Observable: elegant functional pipeline
 fromEvent(input, 'input').pipe(
-    map((e) => e.target.value),          // 提取值
-    debounceTime(300),                    // 防抖 300ms
-    distinctUntilChanged(),               // 值不变就不发
-    filter((v) => v.length >= 2),         // 至少 2 个字符
-    switchMap((q) => fetch(`/api?q=${q}`))// 请求 + 自动取消上一次
+    map((e) => e.target.value),          // extract value
+    debounceTime(300),                    // debounce 300ms
+    distinctUntilChanged(),               // skip if unchanged
+    filter((v) => v.length >= 2),         // at least 2 characters
+    switchMap((q) => fetch(`/api?q=${q}`))// request + auto-cancel previous
 ).subscribe((res) => {
-    // 只有最终有效的结果才会走到这里
+    // Only valid final results reach here
 });
 ```
 
-**常用操作符速查**：
+**Common operators quick reference**:
 
-| 类别 | 操作符 | 用途 |
-|------|------|------|
-| 转换 | `map` `scan` `pluck` | 变换每个值 |
-| 过滤 | `filter` `take` `skip` `distinctUntilChanged` | 筛选/截取 |
-| 时间 | `debounceTime` `throttleTime` `delay` | 防抖/节流/延迟 |
-| 合并 | `merge` `concat` `combineLatest` `zip` | 组合多个流 |
-| 高阶 | `switchMap` `mergeMap` `concatMap` `exhaustMap` | 流中流扁平化 |
-| 工具 | `tap` `catchError` `retry` `share` | 调试/错误/重试/多播 |
+| Category | Operators | Use |
+|----------|-----------|-----|
+| Transform | `map` `scan` `pluck` | Transform each value |
+| Filter | `filter` `take` `skip` `distinctUntilChanged` | Filter/truncate |
+| Time | `debounceTime` `throttleTime` `delay` | Debounce/throttle/delay |
+| Combine | `merge` `concat` `combineLatest` `zip` | Combine multiple streams |
+| Higher-order | `switchMap` `mergeMap` `concatMap` `exhaustMap` | Flatten inner streams |
+| Utility | `tap` `catchError` `retry` `share` | Debug/error/retry/multicast |
 
-## 6. 错误处理
+## 6. Error Handling
 
 ```javascript
-// Promise —— 链式 catch
+// Promise — chained catch
 fetch('/api')
     .then((res) => res.json())
     .then((data) => console.log(data))
     .catch((err) => {
-        console.error('出错了:', err);
-        // 前面的任意一步出错都会跳到这里
+        console.error('Error:', err);
+        // Any error in the chain jumps here
     });
 
 
-// Observable —— 多种处理方式
+// Observable — multiple handling approaches
 observable$.subscribe({
     next: (v) => console.log(v),
-    error: (err) => console.error('出了错:', err),
-    complete: () => console.log('流结束'),
+    error: (err) => console.error('Error:', err),
+    complete: () => console.log('Stream complete'),
 });
 
-// 也可以用 catchError 操作符进行恢复
+// Or use catchError operator to recover
 observable$.pipe(
     catchError((err) => {
         console.error(err);
-        return of('默认值'); // 用默认值恢复流
+        return of('default value'); // recover with default
     }),
-    retry(3), // 失败后重试 3 次
+    retry(3), // retry 3 times on failure
 ).subscribe();
 ```
 
-## 7. 互相转换
+## 7. Interop
 
 ```javascript
 import { from, lastValueFrom, firstValueFrom } from 'rxjs';
 
 // Observable → Promise
-const promise = lastValueFrom(observable$);    // 取最后一个值
-const promise2 = firstValueFrom(observable$);   // 取第一个值
+const promise = lastValueFrom(observable$);    // take last value
+const promise2 = firstValueFrom(observable$);   // take first value
 
 // Promise → Observable
 const stream$ = from(somePromise);
-// 自动调用 .then，把 resolve 值推出来
+// Auto-calls .then, pushes the resolved value
 
-// 多个 Promise → Observable
+// Multiple Promises → Observable
 const stream$ = from([promise1, promise2, promise3]);
 ```
 
-## 8. 多播（Multicast）
+## 8. Multicast
 
 ```javascript
-// Promise —— 天然的"多播"
+// Promise — natural "multicast"
 const p = fetch('/api');
 p.then((r) => console.log('A:', r));
 p.then((r) => console.log('B:', r));
-// 只发一次请求，两个 then 共享结果
+// Only one request, both .then share the result
 
 
-// Observable —— 默认单播，每次 subscribe 独立执行
+// Observable — default unicast, each subscribe is independent
 const obs$ = new Observable((s) => {
     console.log('fetching...');
     s.next(Math.random());
 });
 obs$.subscribe((v) => console.log('A:', v)); // fetching... A: 0.123
-obs$.subscribe((v) => console.log('B:', v)); // fetching... B: 0.456 不同！
+obs$.subscribe((v) => console.log('B:', v)); // fetching... B: 0.456 different!
 
-// 用 share() 实现多播
+// Use share() for multicast
 import { share } from 'rxjs/operators';
 const shared$ = obs$.pipe(share());
 shared$.subscribe((v) => console.log('A:', v)); // fetching... A: 0.789
-shared$.subscribe((v) => console.log('B:', v)); // B: 0.789 相同！
+shared$.subscribe((v) => console.log('B:', v)); // B: 0.789 same!
 ```
 
-## 9. 面试高频追问
+## 9. Common Interview Follow-Ups
 
-### Q1：你在项目里什么时候用 Observable 而不是 Promise？
+### Q1: When do you use Observable instead of Promise?
 
-**标准回答**：
-> 需要**取消**时（搜索建议、自动补全）、处理**实时数据流**时（WebSocket、SSE）、需要**复杂操作符组合**时（防抖、节流、竞态处理）。如果只是一次性的 HTTP 请求，用 Promise 或 `firstValueFrom()` 就够了。
+**Standard answer**:
+> When you need **cancellation** (search suggestions, autocomplete), when dealing with **real-time data streams** (WebSocket, SSE), or when requiring **complex operator composition** (debounce, throttle, race handling). For a one-off HTTP request, Promise or `firstValueFrom()` is sufficient.
 
-### Q2：`switchMap`、`mergeMap`、`concatMap`、`exhaustMap` 怎么选？
+### Q2: `switchMap`, `mergeMap`, `concatMap`, `exhaustMap` — how to choose?
 
-| 操作符 | 行为 | 场景 |
-|------|------|------|
-| `switchMap` | 取消前一个，只保留最新 | 搜索建议、自动补全 |
-| `mergeMap` | 全部并发执行 | 批量上传，每个独立 |
-| `concatMap` | 排队，一个接一个 | 需保证顺序的操作 |
-| `exhaustMap` | 忽略新来的，等当前完成 | 登录按钮防重复提交 |
+| Operator | Behavior | Scenario |
+|----------|----------|----------|
+| `switchMap` | Cancel previous, keep only latest | Search suggestions, autocomplete |
+| `mergeMap` | All run concurrently | Batch upload, each independent |
+| `concatMap` | Queue up, one at a time | Operations requiring order |
+| `exhaustMap` | Ignore new until current completes | Login button, prevent duplicate submits |
 
 ```javascript
-// 防止重复登录的关键：exhaustMap
+// Key anti-duplicate-submit pattern: exhaustMap
 fromEvent(loginBtn, 'click').pipe(
     exhaustMap(() => loginRequest())
 ).subscribe();
-// 点击 → 发请求 → 正在登录中... → 再点 → 忽略！
+// Click → send request → logging in... → click again → ignored!
 ```
 
-### Q3：Observable 和 Promise 哪个性能更好？
+### Q3: Which performs better, Observable or Promise?
 
-> 不是同类事物。对于简单的单次异步操作，Promise 更轻量（原生）。Observable 的强大在于流式处理和可组合性。拿到这个问题的面试官在考察"合适的技术选型"思维。
+> They're not directly comparable. For simple single async operations, Promise is lighter (native). Observable's strength lies in stream processing and composability. Interviewers asking this are testing your "right tool for the job" thinking.
 
-## 10. 💡 一句话记住
+## 10. 💡 Remember with Analogy
 
-| 概念 | 类比 |
-|------|------|
-| **Promise** | 外卖订单：下单 → 等待 → 送达（一次） |
-| **Observable** | 自来水龙头：拧开 → 持续出水 → 关掉 |
+| Concept | Analogy |
+|---------|---------|
+| **Promise** | Food delivery: order → wait → delivered (once) |
+| **Observable** | Water tap: turn on → continuous flow → turn off |
 
 ```javascript
-// Promise = 函数调用返回一个值
-// Observable = 函数调用返回一个流
+// Promise = function call returns a value
+// Observable = function call returns a stream
 
-// 本质：
-// Promise：Push 单值，Eager，不可取消
-// Observable：Push 多值，Lazy，可取消
+// Essence:
+// Promise: Push single value, Eager, Uncancelable
+// Observable: Push multiple values, Lazy, Cancelable
 ```
 
-**面试最后一问的回答模板**：
-> Promise 解决"**某一次**"异步操作的结果获取，Observable 解决"**某一类**"异步事件流的处理。前者是 ES 标准，后者来自 RxJS。在实际项目中，HTTP 请求用 Promise 就够；搜索建议、WebSocket、复杂异步编排用 Observable 更合适。核心差异是：**Eager vs Lazy**、**单值 vs 多值**、**不可取消 vs 可取消**。
+**Interview closing template**:
+> Promise solves getting the result of "**one**" async operation. Observable solves handling "**a category**" of async event streams. The former is an ES standard, the latter comes from RxJS. In real projects: HTTP requests are fine with Promise; search suggestions, WebSocket, and complex async orchestration suit Observable better. The core differences are: **Eager vs Lazy**, **single value vs multi-value**, and **uncancelable vs cancelable**.
