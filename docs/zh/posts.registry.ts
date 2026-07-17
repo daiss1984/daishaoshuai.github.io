@@ -7,6 +7,12 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-data-types',
+    title: 'Python 数据类型全面指南',
+    description:
+      '从数字、字符串到列表、字典和集合，掌握 Python 的核心数据类型与常见使用场景。',
+  },
+  {
     slug: 'jvm-optimization-guide',
     title: 'JVM 调优实战指南',
     description:

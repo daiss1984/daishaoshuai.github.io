@@ -8,6 +8,12 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-data-types',
+    title: 'A Practical Guide to Python Data Types',
+    description:
+      'Learn the core Python built-in data types, mutability, type conversion, and when to use each one in real projects.',
+  },
+  {
     slug: 'jvm-optimization-guide',
     title: 'JVM Optimization Practical Guide',
     description:
