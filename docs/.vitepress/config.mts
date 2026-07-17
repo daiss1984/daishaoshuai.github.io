@@ -69,6 +69,7 @@ export default defineConfig({
                 text: 'JavaScript & Frontend',
                 collapsed: false,
                 items: [
+                  { text: 'useEffect Closure Trap', link: '/posts/useeffect-closure-trap' },
                   { text: 'CSS Flexbox: Properties & Layouts', link: '/posts/css-flex-guide' },
                   { text: 'Promise vs Observable', link: '/posts/promise-vs-observable' },
                   { text: 'Browser Event Loop Explained', link: '/posts/js-event-loop' },
@@ -122,6 +123,7 @@ export default defineConfig({
                 text: 'JavaScript & Frontend',
                 collapsed: false,
                 items: [
+                  { text: 'useEffect 异步闭包陷阱', link: '/zh/posts/useeffect-closure-trap' },
                   { text: 'CSS Flex 常用属性与布局', link: '/zh/posts/css-flex-guide' },
                   { text: 'Promise vs Observable', link: '/zh/posts/promise-vs-observable' },
                   { text: '浏览器如何实现异步', link: '/zh/posts/js-event-loop' },

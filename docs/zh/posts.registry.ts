@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'useeffect-closure-trap',
+    title: 'useEffect 异步闭包陷阱 —— 原因分析与解决方案',
+    description:
+      '为什么 useEffect 里拿到的总是旧值？深入分析 stale closure 的产生原理，以及 useRef、函数式更新、正确依赖等多种解决手段。',
+    category: 'JavaScript & Frontend',
+  },
+  {
     slug: 'python-data-types',
     title: 'Python 数据类型全面指南',
     description:

@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'useeffect-closure-trap',
+    title: 'useEffect Async Closure Trap — Why It Happens & How to Fix',
+    description:
+      'Why does useEffect always see stale state? Deep dive into the stale closure problem and learn solutions with useRef, functional updates, proper dependencies, and more.',
+    category: 'JavaScript & Frontend',
+  },
+  {
     slug: 'python-data-types',
     title: 'A Practical Guide to Python Data Types',
     description:
