@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'spring-design-patterns',
+    title: 'Spring Boot 设计模式',
+    description:
+      'Spring Boot 中无处不在的设计模式 —— IoC、代理、模板、策略、观察者、责任链等，结合源码实例讲解。',
+    category: 'Java & JVM',
+  },
+  {
     slug: 'python-inheritance',
     title: 'Python 继承',
     description:

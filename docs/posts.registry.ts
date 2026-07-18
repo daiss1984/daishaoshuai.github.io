@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'spring-design-patterns',
+    title: 'Spring Boot Design Patterns',
+    description:
+      'The design patterns that power Spring Boot — IoC, Proxy, Template, Strategy, Observer, Chain of Responsibility, and more, with real source code references.',
+    category: 'Java & JVM',
+  },
+  {
     slug: 'python-inheritance',
     title: 'Python Inheritance',
     description:
