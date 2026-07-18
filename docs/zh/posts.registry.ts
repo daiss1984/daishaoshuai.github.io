@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'java-threadpool',
+    title: 'Java 多线程与线程池配置',
+    description:
+      '掌握 Java 多线程基础、ThreadPoolExecutor 七大参数，以及 CPU 密集 vs IO 密集场景下的线程池配置实战指南。',
+    category: 'Java & JVM',
+  },
+  {
     slug: 'spring-design-patterns',
     title: 'Spring Boot 设计模式',
     description:

@@ -61,6 +61,7 @@ export default defineConfig({
                 text: 'Java & JVM',
                 collapsed: false,
                 items: [
+                  { text: 'Java Multithreading & Thread Pool', link: '/posts/java-threadpool' },
                   { text: 'Spring Boot Design Patterns', link: '/posts/spring-design-patterns' },
                   { text: 'JVM Optimization Guide', link: '/posts/jvm-optimization-guide' },
                   { text: 'Memory Leak vs OOM', link: '/posts/memory-leak-vs-oom' },
@@ -118,6 +119,7 @@ export default defineConfig({
                 text: 'Java & JVM',
                 collapsed: false,
                 items: [
+                  { text: 'Java 多线程与线程池配置', link: '/zh/posts/java-threadpool' },
                   { text: 'Spring Boot 设计模式', link: '/zh/posts/spring-design-patterns' },
                   { text: 'JVM 调优实战指南', link: '/zh/posts/jvm-optimization-guide' },
                   { text: '内存泄漏 vs 内存溢出', link: '/zh/posts/memory-leak-vs-oom' },

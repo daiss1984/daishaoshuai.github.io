@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'java-threadpool',
+    title: 'Java Multithreading & Thread Pool Configuration',
+    description:
+      'Master Java multithreading fundamentals, ThreadPoolExecutor parameters, and practical guidelines for sizing thread pools in CPU-intensive vs IO-intensive scenarios.',
+    category: 'Java & JVM',
+  },
+  {
     slug: 'spring-design-patterns',
     title: 'Spring Boot Design Patterns',
     description:
