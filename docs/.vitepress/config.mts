@@ -53,6 +53,7 @@ export default defineConfig({
                 text: 'Python',
                 collapsed: false,
                 items: [
+                  { text: 'Python Iterators & Generators', link: '/posts/python-iterator-generator' },
                   { text: 'Python Inheritance', link: '/posts/python-inheritance' },
                   { text: 'Python Data Types Guide', link: '/posts/python-data-types' },
                 ]
@@ -112,6 +113,7 @@ export default defineConfig({
                 text: 'Python',
                 collapsed: false,
                 items: [
+                  { text: 'Python 迭代器与生成器', link: '/zh/posts/python-iterator-generator' },
                   { text: 'Python 继承', link: '/zh/posts/python-inheritance' },
                   { text: 'Python 数据类型全面指南', link: '/zh/posts/python-data-types' },
                 ]

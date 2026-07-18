@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-iterator-generator',
+    title: 'Python Iterators & Generators',
+    description:
+      'Understand the iterator protocol, build custom iterators, master yield and generator expressions, and learn when to use generators for memory-efficient data processing.',
+    category: 'Python',
+  },
+  {
     slug: 'db-index-optimization',
     title: 'Relational Database Index Design & Optimization',
     description:

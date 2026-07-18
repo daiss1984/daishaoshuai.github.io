@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-iterator-generator',
+    title: 'Python 迭代器与生成器',
+    description:
+      '理解迭代器协议，手写自定义迭代器，掌握 yield 与生成器表达式，学会用生成器做内存友好的数据处理。',
+    category: 'Python',
+  },
+  {
     slug: 'db-index-optimization',
     title: '关系型数据库索引设计与优化',
     description:
