@@ -155,7 +155,21 @@ D()
 # A.__init__
 ```
 
-Notice: even though `B.__init__` calls `super()`, it reaches `C.__init__`, not `A.__init__` directly. That's because `super()` follows MRO: `D → B → C → A`. Each class cooperates by calling `super()` — this is the **cooperative multiple inheritance** pattern.
+Notice two things:
+
+**1. `B.__init__`'s `super()` goes to `C`, not `A`.** That's because `super()` follows MRO: `D → B → C → A`. From `B`'s position in the MRO, the next class is `C`, not `A`. Each class cooperates by calling `super()` — this is the **cooperative multiple inheritance** pattern.
+
+**2. `A.__init__` prints only once.** Even though both `B` and `C` inherit from `A`, the `super()` chain is linear, not tree-shaped:
+
+```
+D.__init__
+  → super() → B.__init__
+                → super() → C.__init__   (not A! MRO says C comes before A)
+                              → super() → A.__init__
+                                            → super() → object (nothing)
+```
+
+Both `B` and `C` sit between `D` and `A` in the MRO. `super()` in `B` finds `C` first; `super()` in `C` then finds `A`. So `A` is only reached once, through `C`'s `super()` call — `B`'s `super()` never directly calls `A`. The chain is **D → B → C → A**, not two separate paths.
 
 Without `super()` in `B` and `C`, `A.__init__` would be skipped entirely — a common diamond pitfall.
 
