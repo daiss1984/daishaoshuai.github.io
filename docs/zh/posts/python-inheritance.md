@@ -86,7 +86,11 @@ print(B().greet())  # Hello from A and B
 
 ## 3. MRO（方法解析顺序）
 
-调用一个方法时，Python 按特定顺序查找类。这就是 **MRO**——Method Resolution Order。
+**MRO = Method Resolution Order（方法解析顺序）。**
+
+当你调用 `obj.method()` 时，Python 需要决定执行**哪个**类里的 `method`。这个决策遵循一条严格的、预先计算好的顺序，就是 MRO。你可以把它理解为一条**查找路径**：Python 沿着一个类列表逐个查找，直到找到该方法为止。
+
+单继承时 MRO 很简单：`子类 → 父类 → 爷爷类 → object`。但多继承时，顺序就不是一眼能看出来的了：
 
 ```python
 class A:

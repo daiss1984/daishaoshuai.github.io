@@ -86,7 +86,11 @@ Always use `super()` instead of hardcoding the parent class name — it's critic
 
 ## 3. Method Resolution Order (MRO)
 
-When you call a method, Python searches classes in a specific order. This is the **MRO** — Method Resolution Order.
+**MRO = Method Resolution Order.**
+
+When you call `obj.method()`, Python needs to decide *which* class's `method` to run. This decision follows a strict, pre-computed order called the MRO. Think of it as a **search path**: Python walks through a list of classes, one by one, until it finds the method.
+
+For single inheritance, the MRO is trivial: `Child → Parent → Grandparent → object`. But for multiple inheritance, the order is non-obvious:
 
 ```python
 class A:
