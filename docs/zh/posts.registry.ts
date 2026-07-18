@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'db-index-optimization',
+    title: '关系型数据库索引设计与优化',
+    description:
+      '掌握 B+Tree 索引原理、联合索引最左前缀法则、覆盖索引、索引失效场景，以及 EXPLAIN 驱动的优化实战。',
+    category: 'Redis & Backend',
+  },
+  {
     slug: 'java-threadpool',
     title: 'Java 多线程与线程池配置',
     description:

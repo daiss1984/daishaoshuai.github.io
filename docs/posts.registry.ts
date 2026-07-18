@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'db-index-optimization',
+    title: 'Relational Database Index Design & Optimization',
+    description:
+      'Master B+Tree index internals, composite index leftmost prefix rule, covering indexes, index failure scenarios, and EXPLAIN-driven optimization.',
+    category: 'Redis & Backend',
+  },
+  {
     slug: 'java-threadpool',
     title: 'Java Multithreading & Thread Pool Configuration',
     description:

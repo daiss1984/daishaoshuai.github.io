@@ -84,6 +84,7 @@ export default defineConfig({
                 text: 'Redis & Backend',
                 collapsed: false,
                 items: [
+                  { text: 'DB Index Design & Optimization', link: '/posts/db-index-optimization' },
                   { text: 'Redis Data Types & Expiry', link: '/posts/redis-types-expiry' },
                 ]
               },
@@ -142,6 +143,7 @@ export default defineConfig({
                 text: 'Redis & Backend',
                 collapsed: false,
                 items: [
+                  { text: '数据库索引设计与优化', link: '/zh/posts/db-index-optimization' },
                   { text: 'Redis 数据类型与过期策略', link: '/zh/posts/redis-types-expiry' },
                 ]
               },
