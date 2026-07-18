@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-inheritance',
+    title: 'Python 继承',
+    description:
+      '掌握 Python 的单继承、多继承与多层继承 —— MRO、super()、ABC、组合 vs 继承，以及常见陷阱。',
+    category: 'Python',
+  },
+  {
     slug: 'js-closure',
     title: 'JavaScript 闭包',
     description:

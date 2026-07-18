@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-inheritance',
+    title: 'Python Inheritance',
+    description:
+      'Master single, multiple, and multilevel inheritance in Python — MRO, super(), ABC, composition vs inheritance, and common pitfalls.',
+    category: 'Python',
+  },
+  {
     slug: 'js-closure',
     title: 'JavaScript Closures',
     description:
