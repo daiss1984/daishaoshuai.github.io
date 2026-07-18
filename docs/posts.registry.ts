@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'js-closure',
+    title: 'JavaScript Closures',
+    description:
+      'What is a closure, how does it work, and why is it everywhere in JavaScript?',
+    category: 'JavaScript & Frontend',
+  },
+  {
     slug: 'useeffect-closure-trap',
     title: 'useEffect Async Closure Trap — Why It Happens & How to Fix',
     description:

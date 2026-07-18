@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'js-closure',
+    title: 'JavaScript 闭包',
+    description:
+      '什么是闭包，它是如何工作的，为什么在 JavaScript 中无处不在？',
+    category: 'JavaScript & Frontend',
+  },
+  {
     slug: 'useeffect-closure-trap',
     title: 'useEffect 异步闭包陷阱 —— 原因分析与解决方案',
     description:
