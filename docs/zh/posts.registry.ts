@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'db-optimization-guide',
+    title: '数据库优化 —— 六个维度全攻略（MySQL & PostgreSQL）',
+    description:
+      '关系型数据库优化的系统框架 —— SQL 改写、索引设计、表结构优化、参数调优、架构升级、监控发现 —— 覆盖 MySQL 和 PostgreSQL 实战。',
+    category: 'Redis & Backend',
+  },
+  {
     slug: 'python-iterator-generator',
     title: 'Python 迭代器与生成器',
     description:

@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'db-optimization-guide',
+    title: 'Database Optimization — A 6-Dimensional Guide (MySQL & PostgreSQL)',
+    description:
+      'A systematic framework for relational database optimization — SQL rewriting, indexing, schema design, configuration tuning, architecture scaling, and monitoring — with practical MySQL and PostgreSQL examples.',
+    category: 'Redis & Backend',
+  },
+  {
     slug: 'python-iterator-generator',
     title: 'Python Iterators & Generators',
     description:
