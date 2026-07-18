@@ -157,7 +157,24 @@ D()
 
 Notice two things:
 
-**1. `B.__init__`'s `super()` goes to `C`, not `A`.** That's because `super()` follows MRO: `D → B → C → A`. From `B`'s position in the MRO, the next class is `C`, not `A`. Each class cooperates by calling `super()` — this is the **cooperative multiple inheritance** pattern.
+**1. `B.__init__`'s `super()` goes to `C`, not `A`.**
+
+But wait — `B` is declared as `class B(A)`, so shouldn't `B`'s `super()` go to `A`? This is the most common misconception about `super()`.
+
+**`super()` does NOT mean "my parent class."** It means: "given the MRO of `type(self)`, give me the next class after the current one."
+
+When we call `D()`, `self` is an instance of `D`. So `type(self)` is `D`, and the MRO is `D → B → C → A → object`. Every `super()` in the entire call chain looks at **this same MRO** (`D`'s MRO), not at the local class's own parent:
+
+| `super()` called inside | `type(self)` | Current class in MRO | Next class → |
+|---|---|---|---|
+| `D.__init__` | `D` | `D` | **`B`** |
+| `B.__init__` | `D` | `B` | **`C`** (not `A`!) |
+| `C.__init__` | `D` | `C` | **`A`** |
+| `A.__init__` | `D` | `A` | `object` |
+
+From within `B.__init__`, `super()` still sees `type(self) == D`, finds `B` in the MRO, and returns the next class — which is `C`. `B`'s own parent (`A`) is irrelevant to this lookup.
+
+Each class cooperates by calling `super()` — this is the **cooperative multiple inheritance** pattern.
 
 **2. `A.__init__` prints only once.** Even though both `B` and `C` inherit from `A`, the `super()` chain is linear, not tree-shaped:
 
