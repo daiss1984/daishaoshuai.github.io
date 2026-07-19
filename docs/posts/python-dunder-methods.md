@@ -262,6 +262,53 @@ for n in Countdown(3):
     print(n)  # 3, 2, 1, 0
 ```
 
+### `__reversed__` — `reversed(obj)`
+
+If you don't define `__reversed__`, `reversed()` falls back to `__len__` + `__getitem__` (slow). Define it for an efficient custom reverse iterator:
+
+```python
+class Countdown:
+    def __init__(self, start):
+        self.start = start
+
+    def __iter__(self):
+        for i in range(self.start + 1):
+            yield i
+
+    def __reversed__(self):
+        for i in range(self.start, -1, -1):
+            yield i
+
+c = Countdown(3)
+print(list(c))           # [0, 1, 2, 3]
+print(list(reversed(c))) # [3, 2, 1, 0]
+```
+
+### `__bool__` — Truthiness (`if obj:`)
+
+By default, every Python object is truthy. Override `__bool__` (or `__len__`) to define what "falsy" means for your class:
+
+```python
+class ShoppingCart:
+    def __init__(self):
+        self.items = []
+
+    def __bool__(self):
+        return len(self.items) > 0
+
+cart = ShoppingCart()
+print(bool(cart))   # False
+if cart:
+    print("Has items")
+else:
+    print("Cart is empty")  # This runs
+
+cart.items.append("book")
+print(bool(cart))   # True
+```
+
+> Python checks `__bool__` first, then `__len__` (0 = falsy). If neither exists, the object is always truthy.
+
 ## 5. Comparison Operators
 
 Override these to make your objects sortable and comparable:
@@ -417,7 +464,12 @@ with DatabaseConnection("postgresql://...") as conn:
 
 ## 8. Attribute Access: `__getattr__`, `__setattr__`, `__delattr__`
 
-### `__getattr__` — Called only when normal lookup fails
+### `__getattr__` vs `__getattribute__`
+
+These two are easily confused:
+
+- **`__getattribute__`**: called on **every** attribute access, before anything else. Override with extreme caution.
+- **`__getattr__`**: called only when normal lookup (including `__getattribute__`) fails. This is the safe one to override.
 
 ```python
 class Config:
@@ -425,6 +477,7 @@ class Config:
         self._data = {"host": "localhost", "port": 8080}
 
     def __getattr__(self, name):
+        # Only called when self.name doesn't exist
         if name in self._data:
             return self._data[name]
         raise AttributeError(f"No such config: {name}")
@@ -468,7 +521,125 @@ p = Point(1, 2)
 
 Benefits: ~50% memory savings and faster attribute access. Trade-off: no `__dict__`, so no dynamic attributes.
 
-## 10. Quick Reference
+## 10. Descriptor Protocol: `__get__`, `__set__`, `__delete__`, `__set_name__`
+
+Descriptors are the machinery behind `@property`, `@classmethod`, and `@staticmethod`. When a class attribute implements `__get__`, Python treats it as a descriptor:
+
+```python
+class PositiveNumber:
+    def __set_name__(self, owner, name):
+        self.name = name          # The attribute name on the owner class
+
+    def __get__(self, obj, objtype=None):
+        return obj.__dict__.get(self.name, 0)
+
+    def __set__(self, obj, value):
+        if value < 0:
+            raise ValueError(f"{self.name} must be positive")
+        obj.__dict__[self.name] = value
+
+    # No __delete__ → deleting raises AttributeError
+
+class Product:
+    price = PositiveNumber()     # Descriptor as class attribute
+
+p = Product()
+p.price = 99      # __set__
+print(p.price)    # 99 — __get__
+p.price = -5      # ValueError!
+```
+
+> `__set_name__` is called at class creation time and tells the descriptor its own attribute name — no need to pass "price" twice.
+
+## 11. Async Variants: `__aiter__`, `__anext__`, `__aenter__`, `__aexit__`
+
+For async code, Python provides async counterparts to the iterator and context manager protocols:
+
+```python
+import asyncio
+
+class AsyncCountdown:
+    def __init__(self, start):
+        self.start = start
+
+    def __aiter__(self):
+        self.current = self.start
+        return self
+
+    async def __anext__(self):
+        if self.current < 0:
+            raise StopAsyncIteration
+        await asyncio.sleep(0.1)     # Simulate async work
+        val = self.current
+        self.current -= 1
+        return val
+
+async def main():
+    async for n in AsyncCountdown(3):
+        print(n)  # 3, 2, 1, 0
+
+asyncio.run(main())
+```
+
+Async context manager:
+
+```python
+class AsyncConnection:
+    async def __aenter__(self):
+        print("Connecting...")
+        await asyncio.sleep(0.1)
+        return self
+
+    async def __aexit__(self, *args):
+        print("Closing...")
+        await asyncio.sleep(0.1)
+
+async def main():
+    async with AsyncConnection() as conn:
+        print("Working...")
+
+asyncio.run(main())
+```
+
+## 12. Class-Level Hooks: `__init_subclass__`, `__class_getitem__`
+
+### `__init_subclass__` — Hook When Subclassed
+
+Called automatically when a class is subclassed. Useful for plugin registration:
+
+```python
+class Plugin:
+    _registry = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        Plugin._registry.append(cls)
+
+class PDFPlugin(Plugin):
+    pass
+
+class ImagePlugin(Plugin):
+    pass
+
+print(Plugin._registry)  # [<class 'PDFPlugin'>, <class 'ImagePlugin'>]
+```
+
+### `__class_getitem__` — Generic Type Hints
+
+Enables `MyClass[int]` syntax. Used by `list[int]`, `dict[str, int]`, etc.:
+
+```python
+class Vector:
+    def __class_getitem__(cls, params):
+        print(f"Vector parameterized with {params}")
+        return cls
+
+v_type = Vector[int]  # "Vector parameterized with int"
+```
+
+> In practice, use `typing.Generic` instead of writing `__class_getitem__` manually.
+
+## 13. Quick Reference
 
 | Category | Methods | Trigger |
 |---|---|---|
@@ -476,6 +647,7 @@ Benefits: ~50% memory savings and faster attribute access. Trade-off: no `__dict
 | Representation | `__str__`, `__repr__`, `__format__`, `__bytes__` | `print()`, `repr()`, `format()`, `bytes()` |
 | Callable | `__call__` | `obj()` |
 | Container | `__len__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__iter__`, `__next__`, `__reversed__` | `len()`, `obj[key]`, `in`, `for ... in`, `reversed()` |
+| Truthiness | `__bool__`, `__len__` | `bool(obj)`, `if obj:` |
 | Comparison | `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`, `__hash__` | `==`, `!=`, `<`, `<=`, `>`, `>=`, `hash()` |
 | Arithmetic | `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__floordiv__`, `__mod__`, `__pow__`, `__matmul__` | `+`, `-`, `*`, `/`, `//`, `%`, `**`, `@` |
 | Reflected ops | `__radd__`, `__rsub__`, ... | When left operand fails |
@@ -483,6 +655,9 @@ Benefits: ~50% memory savings and faster attribute access. Trade-off: no `__dict
 | Unary | `__neg__`, `__pos__`, `__abs__`, `__invert__` | `-obj`, `+obj`, `abs(obj)`, `~obj` |
 | Context Manager | `__enter__`, `__exit__` | `with` statement |
 | Attribute Access | `__getattr__`, `__getattribute__`, `__setattr__`, `__delattr__`, `__dir__` | `obj.attr`, `del obj.attr`, `dir(obj)` |
+| Descriptor | `__get__`, `__set__`, `__delete__`, `__set_name__` | `obj.attr`, `obj.attr = val`, `del obj.attr` |
+| Async | `__aiter__`, `__anext__`, `__aenter__`, `__aexit__` | `async for`, `async with` |
+| Class Hooks | `__init_subclass__`, `__class_getitem__` | Subclass creation, `Cls[int]` |
 
 ## Summary
 
@@ -494,5 +669,7 @@ Dunder methods are Python's way of letting your classes integrate seamlessly wit
 4. Override comparison operators with `@total_ordering` to save boilerplate.
 5. Use `__enter__`/`__exit__` for deterministic resource cleanup.
 6. Be careful with `__setattr__` — always delegate to `super()`.
+7. **Descriptors** (`__get__`/`__set__`) power `@property` — use `__set_name__` for cleaner APIs.
+8. Async code has its own dunder methods — `__aiter__`, `__aenter__`, etc.
 
 These methods are not "private" — they are the public API Python itself uses. Once you understand them, you can design classes that feel like built-in types.
