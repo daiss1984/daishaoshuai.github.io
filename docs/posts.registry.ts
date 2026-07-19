@@ -9,6 +9,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-dunder-methods',
+    title: 'Python Dunder Methods — __init__, __str__, __repr__, __new__ & More',
+    description:
+      'Master Python double-underscore methods — from __init__ and __new__ to __str__, __repr__, __call__, operator overloading, context managers, and more.',
+    category: 'Python',
+  },
+  {
     slug: 'db-optimization-guide',
     title: 'Database Optimization — A 6-Dimensional Guide (MySQL & PostgreSQL)',
     description:

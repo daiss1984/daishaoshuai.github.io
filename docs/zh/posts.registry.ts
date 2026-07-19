@@ -8,6 +8,13 @@ export interface PostEntry {
 
 export const posts: PostEntry[] = [
   {
+    slug: 'python-dunder-methods',
+    title: 'Python 双下划线方法 —— __init__、__str__、__repr__、__new__ 全解',
+    description:
+      '掌握 Python 的双下划线（dunder）方法 —— 从 __init__、__new__ 到 __str__、__repr__、__call__、运算符重载、上下文管理器，理解每个方法的作用与使用场景。',
+    category: 'Python',
+  },
+  {
     slug: 'db-optimization-guide',
     title: '数据库优化 —— 六个维度全攻略（MySQL & PostgreSQL）',
     description:
